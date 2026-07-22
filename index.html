@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nyvora · Generador de Recursos Educativos</title>
+<link rel="manifest" id="manifest-link">
+<meta name="theme-color" content="#2D3A55">
+<style>
+  :root{
+    --bg:#F5F3EE;
+    --card:#FFFFFF;
+    --primary:#2D3A55;
+    --accent:#C17F3B;
+    --text:#22262E;
+    --muted:#6B7280;
+    --border:#E4E0D8;
+    --success:#3A5A40;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI',Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:680px;margin:0 auto;}
+  header{text-align:center;margin-bottom:28px;}
+  header h1{
+    font-size:26px;margin:0 0 4px;color:var(--primary);letter-spacing:-0.5px;
+  }
+  header p{margin:0;color:var(--muted);font-size:14px;}
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:18px;
+  }
+  label{
+    display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--primary);
+  }
+  select, input[type=text], textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    font-size:14px;
+    margin-bottom:16px;
+    font-family:inherit;
+    background:#fff;
+    color:var(--text);
+  }
+  textarea{resize:vertical;min-height:70px;}
+  .tipo-selector{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .tipo-btn{
+    border:1px solid var(--border);
+    background:#fff;
+    padding:10px 6px;
+    border-radius:10px;
+    font-size:12.5px;
+    text-align:center;
+    cursor:pointer;
+    color:var(--muted);
+    transition:.15s;
+  }
+  .tipo-btn.active{
+    border-color:var(--primary);
+    background:var(--primary);
+    color:#fff;
+    font-weight:600;
+  }
+  button.main-btn{
+    width:100%;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    padding:14px;
+    border-radius:10px;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+    transition:.15s;
+  }
+  button.main-btn:hover{filter:brightness(1.05);}
+  button.main-btn:disabled{background:#C9C2B4;cursor:not-allowed;}
+  #resultado{
+    white-space:pre-wrap;
+    line-height:1.55;
+    font-size:14.5px;
+    display:none;
+  }
+  #resultado.show{display:block;}
+  .estado{
+    font-size:13px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:10px;
+  }
+  .estado.error{color:#B3261E;font-weight:600;}
+  .api-section h2{font-size:15px;margin:0 0 4px;color:var(--primary);}
+  .api-section p{font-size:12.5px;color:var(--muted);margin:0 0 14px;}
+  .api-row{display:flex;gap:8px;}
+  .api-row input{margin-bottom:0;flex:1;}
+  .api-row button{
+    background:var(--success);color:#fff;border:none;
+    padding:0 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;
+  }
+  .api-row #btnVerKey{
+    background:#fff;border:1px solid var(--border);
+    padding:0 12px;font-size:16px;
+  }
+  .api-status{font-size:12.5px;margin-top:8px;color:var(--success);font-weight:600;}
+  .api-link{color:var(--accent);text-decoration:none;font-weight:600;}
+  .copy-btn{
+    margin-top:12px;background:var(--primary);color:#fff;border:none;
+    padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🎓 Nyvora</h1>
+    <p>Generador de recursos educativos con Inteligencia Artificial</p>
+  </header>
+
+  <div class="card">
+    <label>Tipo de recurso</label>
+    <div class="tipo-selector">
+      <div class="tipo-btn active" data-tipo="examen">Examen + clave</div>
+      <div class="tipo-btn" data-tipo="rubrica">Rúbrica</div>
+      <div class="tipo-btn" data-tipo="adaptacion">Adaptación curricular</div>
+    </div>
+
+    <label for="materia">Materia</label>
+    <input type="text" id="materia" placeholder="Ej: Ciencias Naturales">
+
+    <label for="nivel">Nivel educativo</label>
+    <input type="text" id="nivel" placeholder="Ej: 6° de primaria">
+
+    <label for="detalle">Detalle o enfoque</label>
+    <textarea id="detalle" placeholder="Ej: Enfocado en el ciclo del agua, incluir preguntas de opción múltiple y una abierta"></textarea>
+
+    <button class="main-btn" id="btnGenerar">Generar recurso</button>
+    <div class="estado" id="estado"></div>
+  </div>
+
+  <div class="card" id="cardResultado" style="display:none;">
+    <div id="resultado"></div>
+    <button class="copy-btn" id="btnCopiar">📋 Copiar texto</button>
+  </div>
+
+  <div class="card api-section">
+    <h2>🔑 Tu API Key de Google AI Studio</h2>
+    <p>
+      Consigue tu llave gratis en
+      <a class="api-link" href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com/app/apikey</a>
+      y pégala aquí. Se guarda solo en tu navegador (localStorage), nunca sale de tu equipo.
+    </p>
+    <div class="api-row">
+      <input type="password" id="apiKeyInput" placeholder="Pega aquí tu API Key">
+      <button id="btnVerKey" type="button" title="Mostrar/ocultar">👁️</button>
+      <button id="btnGuardarKey">Guardar</button>
+    </div>
+    <div class="api-status" id="apiStatus"></div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- PWA ligera: manifest inline vía Blob ----------
+  const manifest = {
+    name: "Nyvora - Generador de Recursos",
+    short_name: "Nyvora",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#F5F3EE",
+    theme_color: "#2D3A55",
+    icons: []
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], {type:"application/json"});
+  document.getElementById("manifest-link").href = URL.createObjectURL(manifestBlob);
+
+  // Service worker mínimo inline (cache-first básico) para permitir instalación
+  if ("serviceWorker" in navigator) {
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => {});
+    `;
+    const swBlob = new Blob([swCode], {type:"application/javascript"});
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(()=>{});
+  }
+
+  // ---------- Selector de tipo de recurso ----------
+  let tipoSeleccionado = "examen";
+  document.querySelectorAll(".tipo-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tipo-btn").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      tipoSeleccionado = btn.dataset.tipo;
+    });
+  });
+
+  // ---------- Manejo de API Key en localStorage ----------
+  const KEY_STORAGE = "profeia_gemini_api_key";
+  const apiKeyInput = document.getElementById("apiKeyInput");
+  const apiStatus = document.getElementById("apiStatus");
+
+  function cargarApiKey(){
+    const saved = localStorage.getItem(KEY_STORAGE);
+    if(saved){
+      apiKeyInput.value = saved;
+      apiStatus.textContent = "✅ API Key cargada desde tu navegador.";
+    }
+  }
+  cargarApiKey();
+
+  document.getElementById("btnVerKey").addEventListener("click", ()=>{
+    const visible = apiKeyInput.type === "text";
+    apiKeyInput.type = visible ? "password" : "text";
+    document.getElementById("btnVerKey").textContent = visible ? "👁️" : "🙈";
+  });
+
+  document.getElementById("btnGuardarKey").addEventListener("click", ()=>{
+    const val = apiKeyInput.value.trim();
+    if(!val){
+      apiStatus.textContent = "⚠️ Pega una API Key antes de guardar.";
+      apiStatus.style.color = "#B3261E";
+      return;
+    }
+    localStorage.setItem(KEY_STORAGE, val);
+    apiStatus.style.color = "";
+    apiStatus.textContent = "✅ API Key guardada correctamente en este navegador.";
+  });
+
+  // ---------- Construcción del prompt según tipo de recurso ----------
+  function construirPrompt(tipo, materia, nivel, detalle){
+    const base = `Eres un asistente experto en pedagogía y diseño curricular. Responde en español, con formato claro usando títulos y listas cuando aplique.`;
+
+    if(tipo === "examen"){
+      return `${base}
+Genera un EXAMEN completo para la materia "${materia}", nivel educativo "${nivel}".
+Enfoque/detalle solicitado: ${detalle || "sin detalle adicional"}.
+Incluye:
+1. Encabezado con espacio para nombre y fecha.
+2. Entre 6 y 10 preguntas variadas (opción múltiple, verdadero/falso, respuesta abierta).
+3. Al final, una sección separada titulada "CLAVE DE RESPUESTAS" con la respuesta correcta de cada pregunta y una breve justificación.`;
+    }
+
+    if(tipo === "rubrica"){
+      return `${base}
+Genera una RÚBRICA de evaluación para la materia "${materia}", nivel educativo "${nivel}".
+Enfoque/detalle solicitado: ${detalle || "sin detalle adicional"}.
+Incluye:
+1. De 4 a 6 criterios de evaluación relevantes.
+2. 4 niveles de desempeño por criterio (Excelente, Bueno, Aceptable, Necesita mejorar).
+3. Descripción breve y clara de qué se espera en cada nivel de cada criterio.
+4. Presenta el resultado como una tabla en texto (usa | para separar columnas).`;
+    }
+
+    // adaptacion curricular
+    return `${base}
+Genera una ADAPTACIÓN CURRICULAR para la materia "${materia}", nivel educativo "${nivel}".
+Enfoque/detalle solicitado: ${detalle || "sin detalle adicional"}.
+Incluye:
+1. Objetivos de aprendizaje ajustados.
+2. Estrategias metodológicas específicas (materiales, tiempos, apoyos).
+3. Criterios de evaluación adaptados.
+4. Sugerencias de acompañamiento para el docente.`;
+  }
+
+  // ---------- Llamada a la API de Gemini ----------
+  const btnGenerar = document.getElementById("btnGenerar");
+  const estado = document.getElementById("estado");
+  const cardResultado = document.getElementById("cardResultado");
+  const resultadoDiv = document.getElementById("resultado");
+
+  btnGenerar.addEventListener("click", async ()=>{
+    const apiKey = localStorage.getItem(KEY_STORAGE);
+    const materia = document.getElementById("materia").value.trim();
+    const nivel = document.getElementById("nivel").value.trim();
+    const detalle = document.getElementById("detalle").value.trim();
+
+    estado.classList.remove("error");
+    estado.textContent = "";
+
+    if(!apiKey){
+      estado.classList.add("error");
+      estado.textContent = "⚠️ Primero guarda tu API Key de Google AI Studio (sección de abajo).";
+      return;
+    }
+    if(!materia || !nivel){
+      estado.classList.add("error");
+      estado.textContent = "⚠️ Completa al menos la Materia y el Nivel educativo.";
+      return;
+    }
+
+    const prompt = construirPrompt(tipoSeleccionado, materia, nivel, detalle);
+
+    btnGenerar.disabled = true;
+    btnGenerar.textContent = "Generando...";
+    estado.textContent = "⏳ Consultando a la IA, esto puede tardar unos segundos...";
+    cardResultado.style.display = "none";
+
+    try{
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await response.json();
+
+      if(!response.ok){
+        const msg = data?.error?.message || "Error desconocido al contactar la API.";
+        throw new Error(msg);
+      }
+
+      const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if(!texto){
+        throw new Error("La API respondió pero no se encontró contenido generado.");
+      }
+
+      resultadoDiv.textContent = texto;
+      resultadoDiv.classList.add("show");
+      cardResultado.style.display = "block";
+      estado.textContent = "✅ Recurso generado con éxito.";
+    }catch(err){
+      estado.classList.add("error");
+      estado.textContent = "❌ " + err.message + " (revisa que tu API Key sea correcta y tenga cuota disponible).";
+    }finally{
+      btnGenerar.disabled = false;
+      btnGenerar.textContent = "Generar recurso";
+    }
+  });
+
+  document.getElementById("btnCopiar").addEventListener("click", ()=>{
+    navigator.clipboard.writeText(resultadoDiv.textContent).then(()=>{
+      estado.textContent = "📋 Texto copiado al portapapeles.";
+    });
+  });
+</script>
+</body>
+</html>
