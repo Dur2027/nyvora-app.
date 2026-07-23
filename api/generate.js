@@ -20,37 +20,58 @@ export default async function handler(req, res) {
 
   const prompt = construirPrompt(tipo, materia, nivel, detalle);
 
+  // Modelo principal configurable desde Vercel (variable GEMINI_MODEL).
+  // Si no se configura, usa este valor por defecto.
+  const modeloPrincipal = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
+  // Modelo de respaldo: si el principal está saturado (error 503) o fue
+  // descontinuado (404), se reintenta automáticamente con este.
+  const modeloRespaldo = process.env.GEMINI_MODEL_FALLBACK || "gemini-2.5-flash";
+
   try {
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      }
-    );
+    let resultado = await llamarGemini(modeloPrincipal, apiKey, prompt);
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      const msg = data?.error?.message || "Error al contactar la API de Gemini.";
-      return res.status(response.status).json({ error: msg });
+    if (!resultado.ok && (resultado.status === 503 || resultado.status === 404)) {
+      resultado = await llamarGemini(modeloRespaldo, apiKey, prompt);
     }
 
-    const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!texto) {
-      return res.status(502).json({ error: "La IA respondió pero no se encontró contenido generado." });
+    if (!resultado.ok) {
+      return res.status(resultado.status).json({ error: resultado.error });
     }
 
-    return res.status(200).json({ texto });
+    return res.status(200).json({ texto: resultado.texto });
   } catch (err) {
     return res.status(500).json({ error: "Error inesperado del servidor: " + err.message });
   }
+}
+
+async function llamarGemini(modelo, apiKey, prompt) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const msg = data?.error?.message || "Error al contactar la API de Gemini.";
+    return { ok: false, status: response.status, error: msg };
+  }
+
+  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!texto) {
+    return { ok: false, status: 502, error: "La IA respondió pero no se encontró contenido generado." };
+  }
+
+  return { ok: true, texto };
 }
 
 function construirPrompt(tipo, materia, nivel, detalle) {
